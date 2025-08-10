@@ -39,13 +39,10 @@ export default function ChatInterface() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      })
-
-      const data = await res.json()
+      // Import dynamically to work with static export
+      const { processEntry } = await import('@/lib/process-entry')
+      const data = await processEntry(message)
+      
       if (data.success) {
         setResponse(data.data)
         setMessage('')
