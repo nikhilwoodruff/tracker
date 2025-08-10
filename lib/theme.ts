@@ -1,0 +1,41 @@
+export const lightTheme = {
+  background: '#ffffff',
+  foreground: '#0a0a0a',
+  card: '#ffffff',
+  cardForeground: '#0a0a0a',
+  border: '#e5e5e5',
+  input: '#e5e5e5',
+  primary: '#0a0a0a',
+  primaryForeground: '#fafafa',
+  secondary: '#f5f5f5',
+  secondaryForeground: '#0a0a0a',
+  muted: '#f5f5f5',
+  mutedForeground: '#737373',
+  accent: '#f5f5f5',
+  accentForeground: '#0a0a0a',
+  destructive: '#ef4444',
+  destructiveForeground: '#fafafa',
+  ring: '#0a0a0a',
+}
+
+export const darkTheme = {
+  background: '#0a0a0a',
+  foreground: '#fafafa',
+  card: '#0a0a0a',
+  cardForeground: '#fafafa',
+  border: '#262626',
+  input: '#262626',
+  primary: '#fafafa',
+  primaryForeground: '#0a0a0a',
+  secondary: '#262626',
+  secondaryForeground: '#fafafa',
+  muted: '#262626',
+  mutedForeground: '#a3a3a3',
+  accent: '#262626',
+  accentForeground: '#fafafa',
+  destructive: '#7f1d1d',
+  destructiveForeground: '#fafafa',
+  ring: '#d4d4d4',
+}
+
+export type Theme = typeof lightTheme
