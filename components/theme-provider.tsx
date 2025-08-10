@@ -22,7 +22,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 
   return (
     <StyledThemeProvider theme={theme}>
-      <GlobalStyles />
+      <GlobalStyles theme={theme} />
       {children}
     </StyledThemeProvider>
   )
