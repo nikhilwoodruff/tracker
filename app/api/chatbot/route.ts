@@ -17,11 +17,8 @@ export async function POST(request: Request) {
 
     const { message, context, history } = await request.json()
 
-    // Build conversation history for Claude
-    const messages = [
-      {
-        role: 'system' as const,
-        content: `You are a helpful health and wellness assistant analyzing the user's tracked data from the last 10 days. 
+    // Build system prompt with context
+    const systemPrompt = `You are a helpful health and wellness assistant analyzing the user's tracked data from the last 10 days. 
         
 The data includes:
 - Nutrition: calories, protein, carbs, fat, fiber
@@ -37,22 +34,25 @@ Keep responses friendly and supportive. Use specific numbers and dates when refe
 
 Here is their recent data (last 10 days):
 ${JSON.stringify(context, null, 2)}`
-      }
-    ]
+
+    // Build messages array for Claude
+    const messages: Array<{ role: 'user' | 'assistant', content: string }> = []
 
     // Add conversation history
     if (history && history.length > 0) {
       history.forEach((msg: any) => {
-        messages.push({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content
-        })
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          messages.push({
+            role: msg.role,
+            content: msg.content
+          })
+        }
       })
     }
 
     // Add current message
     messages.push({
-      role: 'user' as const,
+      role: 'user',
       content: message
     })
 
@@ -60,7 +60,8 @@ ${JSON.stringify(context, null, 2)}`
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1000,
       temperature: 0.7,
-      messages: messages as any,
+      system: systemPrompt,
+      messages: messages,
     })
 
     const responseText = completion.content[0].type === 'text' 
