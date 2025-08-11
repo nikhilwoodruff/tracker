@@ -57,14 +57,16 @@ Return a JSON object with the following structure:
 }
 
 IMPORTANT INSTRUCTIONS:
-1. For nutrition, use your knowledge of common foods to estimate macros. Be specific with numbers.
-2. Extract time-based activities into hourly_activities (24-hour format)
-3. Infer mood from tone and explicit statements (1=terrible, 5=neutral, 10=excellent)
-4. Calculate productive hours based on work/study activities mentioned
-5. Include certainty scores for values you're estimating vs explicitly stated
-6. If information isn't available, use null rather than guessing wildly
+1. ALWAYS provide a value for every metric - never use null. Make educated guesses with low certainty scores when unsure.
+2. For nutrition, use your knowledge of common foods to estimate macros. Be specific with numbers.
+3. Extract time-based activities into hourly_activities (24-hour format)
+4. Infer mood from tone and explicit statements (1=terrible, 5=neutral, 10=excellent). If unclear, guess 5-6 with certainty 0.3
+5. Calculate productive hours based on work/study activities mentioned
+6. Include certainty scores: 1.0 for explicit values, 0.5-0.9 for reasonable estimates, 0.1-0.4 for guesses
 7. Parse times mentioned (e.g., "worked 9-5" = activities from 9 to 17)
-8. For weight, extract if mentioned (e.g., "weighed 75kg", "I'm 165 lbs"). Convert between kg/lbs if only one is given (1 kg = 2.20462 lbs)`
+8. For weight, extract if mentioned. If not mentioned, use previous typical weight with certainty 0.2
+9. For steps: If exercise mentioned but no steps, estimate (running=180 steps/min, walking=120 steps/min). If no exercise, guess 3000-5000 with certainty 0.2
+10. Always provide reasonable defaults: mood=5, energy=5, calories=2000, sleep=7-8 hours if completely unknown (with certainty 0.1-0.3)`
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
