@@ -174,28 +174,6 @@ export default function DataChatbot() {
     scrollToBottom()
   }, [messages])
 
-  const fetchRecentData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-
-    const tenDaysAgo = new Date()
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
-
-    const { data, error } = await supabase
-      .from('entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('date', tenDaysAgo.toISOString().split('T')[0])
-      .order('date', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching data:', error)
-      return null
-    }
-
-    return data
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || loading) return
@@ -206,26 +184,23 @@ export default function DataChatbot() {
     setLoading(true)
 
     try {
-      const recentData = await fetchRecentData()
-      
-      const response = await fetch('/api/chatbot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Use Supabase Edge Function instead of API route (for static export compatibility)
+      const { data, error } = await supabase.functions.invoke('chatbot', {
+        body: { 
           message: userMessage,
-          context: recentData,
           history: messages
-        })
+        }
       })
 
-      const data = await response.json()
+      if (error) throw error
       
       if (data.success) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
       } else {
+        console.error('Chatbot error:', data)
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'Sorry, I encountered an error. Please try again.' 
+          content: `Sorry, I encountered an error: ${data.error || 'Unknown error'}. Please try again.` 
         }])
       }
     } catch (error) {
