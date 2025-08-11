@@ -1,14 +1,38 @@
-import styled from 'styled-components'
+import styled, { keyframes } from 'styled-components'
+
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`
+
+const slideDown = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`
 
 export const Container = styled.div`
   min-height: 100vh;
   background-color: ${({ theme }) => theme.background};
+  animation: ${fadeIn} 0.5s ease-out;
 `
 
 export const Header = styled.header`
   border-bottom: 1px solid ${({ theme }) => theme.border};
   background-color: ${({ theme }) => theme.card};
   padding: 12px 0;
+  animation: ${slideDown} 0.6s ease-out;
 `
 
 export const HeaderContent = styled.div`
@@ -44,7 +68,8 @@ export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'ghost
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
   background-color: ${({ theme, variant = 'primary' }) => 
     variant === 'primary' ? theme.primary : 
     variant === 'secondary' ? theme.secondary : 
@@ -56,8 +81,13 @@ export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'ghost
   
   &:hover {
     opacity: 0.9;
+    transform: scale(1.05);
     background-color: ${({ theme, variant = 'primary' }) => 
       variant === 'ghost' ? theme.secondary : undefined};
+  }
+  
+  &:active {
+    transform: scale(0.98);
   }
   
   &:disabled {
@@ -78,6 +108,12 @@ export const Main = styled.main`
 
 export const Section = styled.div`
   margin-bottom: 32px;
+  animation: ${fadeIn} 0.8s ease-out;
+  animation-fill-mode: both;
+  
+  &:nth-child(1) { animation-delay: 0.1s; }
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.3s; }
 `
 
 export const SectionHeader = styled.div`
@@ -95,11 +131,29 @@ export const SectionTitle = styled.h2`
   color: ${({ theme }) => theme.mutedForeground};
 `
 
+const scaleIn = keyframes`
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+`
+
 export const Card = styled.div`
   background-color: ${({ theme }) => theme.card};
   border: 1px solid ${({ theme }) => theme.border};
   border-radius: 8px;
   padding: 16px;
+  animation: ${scaleIn} 0.5s ease-out;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
 `
 
 export const Input = styled.input`
@@ -110,6 +164,7 @@ export const Input = styled.input`
   background-color: ${({ theme }) => theme.background};
   color: ${({ theme }) => theme.foreground};
   font-size: 14px;
+  transition: all 0.3s ease;
   
   &:focus {
     outline: none;
@@ -132,6 +187,7 @@ export const TextArea = styled.textarea`
   font-size: 14px;
   resize: none;
   min-height: 100px;
+  transition: all 0.3s ease;
   
   &:focus {
     outline: none;
@@ -163,6 +219,15 @@ export const MetricCard = styled(Card)`
   display: flex;
   flex-direction: column;
   gap: 8px;
+  animation: ${scaleIn} 0.6s ease-out;
+  animation-fill-mode: both;
+  
+  &:nth-child(1) { animation-delay: 0.05s; }
+  &:nth-child(2) { animation-delay: 0.1s; }
+  &:nth-child(3) { animation-delay: 0.15s; }
+  &:nth-child(4) { animation-delay: 0.2s; }
+  &:nth-child(5) { animation-delay: 0.25s; }
+  &:nth-child(6) { animation-delay: 0.3s; }
 `
 
 export const MetricHeader = styled.div`

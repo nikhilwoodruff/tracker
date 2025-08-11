@@ -97,9 +97,15 @@ export default function MacroChart({ data }: MacroChartProps) {
       .data(d => d)
       .enter().append('rect')
       .attr('x', d => x(d3.timeFormat('%m/%d')(d.data.date))!)
+      .attr('y', height)
+      .attr('height', 0)
+      .attr('width', x.bandwidth())
+      .transition()
+      .delay((d, i) => i * 50)
+      .duration(800)
+      .ease(d3.easeCubicOut)
       .attr('y', d => y(d[1]))
       .attr('height', d => y(d[0]) - y(d[1]))
-      .attr('width', x.bandwidth())
 
     // Legend
     const legend = g.append('g')

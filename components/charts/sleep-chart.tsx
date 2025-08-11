@@ -55,40 +55,61 @@ export default function SleepChart({ data }: SleepChartProps) {
       .domain([0, 10])
       .range([height, 0])
 
-    // Sleep hours bars
+    // Sleep hours bars with animation
     g.selectAll('.bar')
       .data(data)
       .enter().append('rect')
       .attr('class', 'bar')
       .attr('x', d => x(d.date) - 10)
-      .attr('y', d => yHours(d.hours))
+      .attr('y', height)
       .attr('width', 20)
-      .attr('height', d => height - yHours(d.hours))
+      .attr('height', 0)
       .attr('fill', '#8b5cf6')
       .attr('opacity', 0.6)
+      .transition()
+      .delay((d, i) => i * 50)
+      .duration(800)
+      .ease(d3.easeCubicOut)
+      .attr('y', d => yHours(d.hours))
+      .attr('height', d => height - yHours(d.hours))
 
-    // Sleep quality line
+    // Sleep quality line with animation
     const line = d3.line<SleepData>()
       .x(d => x(d.date))
       .y(d => yQuality(d.quality))
       .curve(d3.curveMonotoneX)
 
-    g.append('path')
+    const path = g.append('path')
       .datum(data.filter(d => d.quality))
       .attr('fill', 'none')
       .attr('stroke', '#10b981')
       .attr('stroke-width', 2)
       .attr('d', line)
+    
+    // Animate line drawing
+    const totalLength = path.node()?.getTotalLength() || 0
+    path
+      .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+      .attr('stroke-dashoffset', totalLength)
+      .transition()
+      .delay(data.length * 50)
+      .duration(1500)
+      .ease(d3.easeCubicInOut)
+      .attr('stroke-dashoffset', 0)
 
-    // Quality dots
+    // Quality dots with animation
     g.selectAll('.dot')
       .data(data.filter(d => d.quality))
       .enter().append('circle')
       .attr('class', 'dot')
       .attr('cx', d => x(d.date))
       .attr('cy', d => yQuality(d.quality))
-      .attr('r', 4)
+      .attr('r', 0)
       .attr('fill', '#10b981')
+      .transition()
+      .delay((d, i) => data.length * 50 + 1500 + i * 50)
+      .duration(300)
+      .attr('r', 4)
 
     // X axis
     g.append('g')

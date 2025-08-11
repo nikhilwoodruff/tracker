@@ -91,16 +91,29 @@ export default function LineChart({ data, title, yLabel, color = '#3b82f6', show
       g.append('path')
         .datum(data)
         .attr('fill', color)
-        .attr('fill-opacity', 0.1)
+        .attr('fill-opacity', 0)
         .attr('d', area)
+        .transition()
+        .duration(1000)
+        .attr('fill-opacity', 0.1)
     }
 
-    g.append('path')
+    const path = g.append('path')
       .datum(data)
       .attr('fill', 'none')
       .attr('stroke', color)
       .attr('stroke-width', 2)
       .attr('d', line)
+    
+    // Animate the line drawing
+    const totalLength = path.node()?.getTotalLength() || 0
+    path
+      .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+      .attr('stroke-dashoffset', totalLength)
+      .transition()
+      .duration(1500)
+      .ease(d3.easeCubicInOut)
+      .attr('stroke-dashoffset', 0)
 
     g.selectAll('.dot')
       .data(data)
@@ -108,8 +121,12 @@ export default function LineChart({ data, title, yLabel, color = '#3b82f6', show
       .attr('class', 'dot')
       .attr('cx', d => x(d.date))
       .attr('cy', d => y(d.value))
-      .attr('r', 3)
+      .attr('r', 0)
       .attr('fill', color)
+      .transition()
+      .delay((d, i) => 1500 + i * 50)
+      .duration(300)
+      .attr('r', 3)
 
     const tooltip = d3.select('body').append('div')
       .attr('class', 'tooltip')

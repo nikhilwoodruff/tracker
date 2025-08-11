@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import styled from 'styled-components'
+import styled, { keyframes } from 'styled-components'
 import { Send, Activity, Brain, Moon, Clock, Utensils, Weight, Calendar } from 'lucide-react'
 import { Form, TextArea, Button, Card, Grid, MetricCard, MetricHeader, MetricContent, MetricRow, Certainty } from './styled'
 
@@ -33,9 +33,21 @@ const DateInput = styled.input`
   }
 `
 
+const slideUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`
+
 const ResponseCard = styled(Card)`
   margin-top: 16px;
   font-size: 14px;
+  animation: ${slideUp} 0.5s ease-out;
 `
 
 const SuccessMessage = styled.p`

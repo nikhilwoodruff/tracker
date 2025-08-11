@@ -146,9 +146,15 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       .attr('width', x.bandwidth())
       .attr('height', y.bandwidth())
       .attr('fill', d => getActivityColor(d.activity))
-      .attr('opacity', 0.8)
+      .attr('opacity', 0)
       .style('cursor', 'pointer')
       .on('mouseover', function(event, d) {
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .attr('opacity', 1)
+          .attr('transform', 'scale(1.1)')
+        
         if (tooltipRef.current) {
           const rect = (event.target as Element).getBoundingClientRect()
           tooltipRef.current.style.left = `${rect.left + rect.width / 2}px`
@@ -162,10 +168,20 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
         }
       })
       .on('mouseout', function() {
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .attr('opacity', 0.8)
+          .attr('transform', 'scale(1)')
+        
         if (tooltipRef.current) {
           tooltipRef.current.classList.remove('visible')
         }
       })
+      .transition()
+      .delay((d, i) => i * 5)
+      .duration(500)
+      .attr('opacity', 0.8)
 
     // X axis
     g.append('g')
