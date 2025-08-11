@@ -15,6 +15,47 @@ const ChartTitle = styled.h3`
   margin-bottom: 8px;
 `
 
+const Tooltip = styled.div`
+  position: absolute;
+  padding: 8px;
+  background: ${({ theme }) => theme.background};
+  border: 1px solid ${({ theme }) => theme.border};
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  
+  &.visible {
+    opacity: 1;
+  }
+`
+
+const Legend = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: ${({ theme }) => theme.mutedForeground};
+`
+
+const LegendItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`
+
+const LegendColor = styled.div<{ color: string }>`
+  width: 12px;
+  height: 12px;
+  background: ${({ color }) => color};
+  border-radius: 2px;
+  opacity: 0.8;
+`
+
 interface ActivityData {
   date: string
   hour: number
@@ -27,6 +68,7 @@ interface ActivityHeatmapProps {
 
 export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!svgRef.current || !data.length) return
@@ -80,6 +122,7 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       'meal': '#f59e0b',
       'leisure': '#06b6d4',
       'commute': '#737373',
+      'personal': '#ec4899',
       'default': '#a3a3a3'
     }
 
@@ -104,8 +147,25 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       .attr('height', y.bandwidth())
       .attr('fill', d => getActivityColor(d.activity))
       .attr('opacity', 0.8)
-      .append('title')
-      .text(d => `${d.hour}:00 - ${d.activity}`)
+      .style('cursor', 'pointer')
+      .on('mouseover', function(event, d) {
+        if (tooltipRef.current) {
+          const rect = (event.target as Element).getBoundingClientRect()
+          tooltipRef.current.style.left = `${rect.left + rect.width / 2}px`
+          tooltipRef.current.style.top = `${rect.top - 40}px`
+          tooltipRef.current.innerHTML = `
+            <div><strong>${d3.timeFormat('%b %d')(new Date(d.date))}</strong></div>
+            <div>${d.hour}:00 - ${d.hour + 1}:00</div>
+            <div style="margin-top: 4px; color: ${getActivityColor(d.activity)}">${d.activity}</div>
+          `
+          tooltipRef.current.classList.add('visible')
+        }
+      })
+      .on('mouseout', function() {
+        if (tooltipRef.current) {
+          tooltipRef.current.classList.remove('visible')
+        }
+      })
 
     // X axis
     g.append('g')
@@ -142,6 +202,41 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
     <ChartCard>
       <ChartTitle>Daily activity patterns</ChartTitle>
       <svg ref={svgRef} width="600" height="300" style={{ width: '100%', height: 'auto', maxWidth: '100%' }} viewBox="0 0 600 300" />
+      <Legend>
+        <LegendItem>
+          <LegendColor color="#8b5cf6" />
+          <span>Sleep</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor color="#3b82f6" />
+          <span>Work</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor color="#10b981" />
+          <span>Exercise</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor color="#f59e0b" />
+          <span>Meals</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor color="#06b6d4" />
+          <span>Leisure</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor color="#737373" />
+          <span>Commute</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor color="#ec4899" />
+          <span>Personal</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor color="#a3a3a3" />
+          <span>Other</span>
+        </LegendItem>
+      </Legend>
+      <Tooltip ref={tooltipRef} />
     </ChartCard>
   )
 }
