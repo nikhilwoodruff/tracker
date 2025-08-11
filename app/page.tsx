@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ChatInterface from '@/components/chat-interface'
 import MetricsDashboard from '@/components/metrics-dashboard'
+import DataChatbot from '@/components/data-chatbot'
 import { LogOut, BarChart3, MessageSquare } from 'lucide-react'
 import {
   Container,
@@ -60,6 +61,8 @@ export default function Home() {
       </Header>
 
       <Main>
+        <DataChatbot />
+        
         <Section>
           <SectionHeader>
             <MessageSquare size={16} />
