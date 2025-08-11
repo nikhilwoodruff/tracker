@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import styled from 'styled-components'
 import { Card } from '../styled'
+import { useInView } from '@/lib/use-in-view'
 
 const ChartCard = styled(Card)`
   padding: 16px;
@@ -69,9 +70,10 @@ interface ActivityHeatmapProps {
 export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
+  const { ref: containerRef, isInView } = useInView(0.2)
 
   useEffect(() => {
-    if (!svgRef.current || !data.length) return
+    if (!svgRef.current || !data.length || !isInView) return
 
     // Transform data
     const activities: ActivityData[] = []
@@ -212,10 +214,10 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       .style('fill', '#737373')
       .text('Hour of day')
 
-  }, [data])
+  }, [data, isInView])
 
   return (
-    <ChartCard>
+    <ChartCard ref={containerRef}>
       <ChartTitle>Daily activity patterns</ChartTitle>
       <svg ref={svgRef} width="600" height="300" style={{ width: '100%', height: 'auto', maxWidth: '100%' }} viewBox="0 0 600 300" />
       <Legend>

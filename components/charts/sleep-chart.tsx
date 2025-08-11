@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import styled from 'styled-components'
 import { Card } from '../styled'
+import { useInView } from '@/lib/use-in-view'
 
 const ChartCard = styled(Card)`
   padding: 16px;
@@ -27,9 +28,10 @@ interface SleepChartProps {
 
 export default function SleepChart({ data }: SleepChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const { ref: containerRef, isInView } = useInView(0.2)
 
   useEffect(() => {
-    if (!svgRef.current || !data.length) return
+    if (!svgRef.current || !data.length || !isInView) return
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
@@ -182,10 +184,10 @@ export default function SleepChart({ data }: SleepChartProps) {
       .style('fill', '#737373')
       .text('Quality')
 
-  }, [data])
+  }, [data, isInView])
 
   return (
-    <ChartCard>
+    <ChartCard ref={containerRef}>
       <ChartTitle>Sleep tracking</ChartTitle>
       <svg ref={svgRef} width="600" height="300" style={{ width: '100%', height: 'auto', maxWidth: '100%' }} viewBox="0 0 600 300" />
     </ChartCard>

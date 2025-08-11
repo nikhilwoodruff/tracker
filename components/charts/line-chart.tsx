@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import styled from 'styled-components'
 import { Card } from '../styled'
+import { useInView } from '@/lib/use-in-view'
 
 const ChartCard = styled(Card)`
   padding: 16px;
@@ -31,9 +32,10 @@ interface LineChartProps {
 
 export default function LineChart({ data, title, yLabel, color = '#3b82f6', showCertainty = false }: LineChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const { ref: containerRef, isInView } = useInView(0.2)
 
   useEffect(() => {
-    if (!svgRef.current || !data.length) return
+    if (!svgRef.current || !data.length || !isInView) return
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
@@ -153,10 +155,10 @@ export default function LineChart({ data, title, yLabel, color = '#3b82f6', show
     return () => {
       d3.select('body').selectAll('.tooltip').remove()
     }
-  }, [data, yLabel, color, showCertainty])
+  }, [data, yLabel, color, showCertainty, isInView])
 
   return (
-    <ChartCard>
+    <ChartCard ref={containerRef}>
       <ChartTitle>{title}</ChartTitle>
       <svg ref={svgRef} width="600" height="300" style={{ width: '100%', height: 'auto', maxWidth: '100%' }} viewBox="0 0 600 300" />
     </ChartCard>
