@@ -47,6 +47,26 @@ const MessagesContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scroll-behavior: smooth;
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.background};
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.border};
+    border-radius: 3px;
+    
+    &:hover {
+      background: ${({ theme }) => theme.mutedForeground};
+    }
+  }
 `
 
 const Message = styled.div<{ role: 'user' | 'assistant' }>`
@@ -164,15 +184,22 @@ export default function DataChatbot() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
   }
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    // Scroll to bottom when new messages are added
+    if (messages.length > 0) {
+      // Small delay to ensure DOM is updated
+      setTimeout(scrollToBottom, 100)
+    }
+  }, [messages.length])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -235,7 +262,7 @@ export default function DataChatbot() {
         </MessageContent>
       )}
 
-      <MessagesContainer>
+      <MessagesContainer ref={messagesContainerRef}>
         {messages.map((message, index) => (
           <Message key={index} role={message.role}>
             <MessageIcon role={message.role}>
