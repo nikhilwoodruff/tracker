@@ -3,13 +3,15 @@
 
 import { createClient } from '@/lib/supabase/client'
 
-export async function processEntry(message: string) {
+export async function processEntry(message: string, selectedDate?: string) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     throw new Error('User not authenticated')
   }
+
+  const targetDate = selectedDate || new Date().toISOString().split('T')[0]
 
   // Option 1: Use Supabase Edge Function (recommended for production)
   if (process.env.NEXT_PUBLIC_USE_EDGE_FUNCTION === 'true') {
@@ -21,11 +23,18 @@ export async function processEntry(message: string) {
 
     const analysis = data.data
 
-    // Save to database
-    const { error: dbError } = await supabase.from('entries').insert({
+    // Check if entry exists for this date
+    const { data: existingEntry } = await supabase
+      .from('entries')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('date', targetDate)
+      .single()
+
+    const entryData = {
       user_id: user.id,
       content: message,
-      date: new Date().toISOString().split('T')[0],
+      date: targetDate,
       
       // Nutrition
       calories: analysis.nutrition?.calories,
@@ -69,7 +78,23 @@ export async function processEntry(message: string) {
         summary: analysis.summary
       },
       ai_analysis: analysis,
-    })
+    }
+
+    let dbError
+    if (existingEntry) {
+      // Update existing entry
+      const { error } = await supabase
+        .from('entries')
+        .update(entryData)
+        .eq('id', existingEntry.id)
+      dbError = error
+    } else {
+      // Insert new entry
+      const { error } = await supabase
+        .from('entries')
+        .insert(entryData)
+      dbError = error
+    }
 
     if (dbError) throw dbError
 
@@ -80,7 +105,7 @@ export async function processEntry(message: string) {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, date: targetDate }),
   })
 
   const data = await res.json()

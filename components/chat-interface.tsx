@@ -2,11 +2,35 @@
 
 import { useState } from 'react'
 import styled from 'styled-components'
-import { Send, Activity, Brain, Moon, Clock, Utensils, Weight } from 'lucide-react'
+import { Send, Activity, Brain, Moon, Clock, Utensils, Weight, Calendar } from 'lucide-react'
 import { Form, TextArea, Button, Card, Grid, MetricCard, MetricHeader, MetricContent, MetricRow, Certainty } from './styled'
 
 const ChatForm = styled(Form)`
   width: 100%;
+`
+
+const DateSelector = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: ${({ theme }) => theme.mutedForeground};
+`
+
+const DateInput = styled.input`
+  background: ${({ theme }) => theme.background};
+  border: 1px solid ${({ theme }) => theme.border};
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: ${({ theme }) => theme.foreground};
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.primary};
+  }
 `
 
 const ResponseCard = styled(Card)`
@@ -32,6 +56,7 @@ export default function ChatInterface() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [response, setResponse] = useState<any>(null)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,7 +66,7 @@ export default function ChatInterface() {
     try {
       // Import dynamically to work with static export
       const { processEntry } = await import('@/lib/process-entry')
-      const data = await processEntry(message)
+      const data = await processEntry(message, selectedDate)
       
       if (data.success) {
         setResponse(data.data)
@@ -62,6 +87,18 @@ export default function ChatInterface() {
 
   return (
     <div>
+      <DateSelector>
+        <Calendar size={12} />
+        <span>Entry date:</span>
+        <DateInput 
+          type="date" 
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          max={new Date().toISOString().split('T')[0]}
+        />
+        <span style={{ fontSize: '10px', opacity: 0.7 }}>(will overwrite existing entry)</span>
+      </DateSelector>
+      
       <ChatForm onSubmit={handleSubmit}>
         <TextArea
           value={message}
