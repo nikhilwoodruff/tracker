@@ -24,29 +24,37 @@ const slideDown = keyframes`
 
 export const Container = styled.div`
   min-height: 100vh;
-  background-color: ${({ theme }) => theme.background};
+  background: ${({ theme }) => theme.background};
   animation: ${fadeIn} 0.5s ease-out;
 `
 
 export const Header = styled.header`
-  border-bottom: 1px solid ${({ theme }) => theme.border};
-  background-color: ${({ theme }) => theme.card};
-  padding: 12px 0;
+  background: ${({ theme }) => theme.glass};
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid ${({ theme }) => theme.glassBorder};
+  padding: 16px 0;
   animation: ${slideDown} 0.6s ease-out;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 `
 
 export const HeaderContent = styled.div`
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 `
 
 export const Logo = styled.h1`
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, ${({ theme }) => theme.primary}, ${({ theme }) => theme.secondary});
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `
 
 export const UserSection = styled.div`
@@ -56,58 +64,68 @@ export const UserSection = styled.div`
 `
 
 export const UserEmail = styled.span`
-  font-size: 12px;
+  font-size: 13px;
   color: ${({ theme }) => theme.mutedForeground};
+  font-family: 'JetBrains Mono', monospace;
 `
 
 export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'ghost' }>`
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: none;
-  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid ${({ theme, variant = 'primary' }) => 
+    variant === 'ghost' ? 'transparent' : theme.glassBorder};
+  font-size: 13px;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: scale(1);
-  background-color: ${({ theme, variant = 'primary' }) => 
+  transition: all 0.2s ease;
+  font-family: 'JetBrains Mono', monospace;
+  
+  background: ${({ theme, variant = 'primary' }) => 
     variant === 'primary' ? theme.primary : 
     variant === 'secondary' ? theme.secondary : 
-    'transparent'};
+    theme.glass};
+  
   color: ${({ theme, variant = 'primary' }) => 
-    variant === 'primary' ? theme.primaryForeground : 
-    variant === 'secondary' ? theme.secondaryForeground : 
-    theme.foreground};
+    variant === 'ghost' ? theme.foreground : '#ffffff'};
   
   &:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
-    background-color: ${({ theme, variant = 'primary' }) => 
-      variant === 'ghost' ? theme.secondary : undefined};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px ${({ theme, variant = 'primary' }) => 
+      variant === 'primary' ? `${theme.primary}40` : 
+      variant === 'secondary' ? `${theme.secondary}40` : 
+      'rgba(255, 255, 255, 0.1)'};
+    
+    background: ${({ theme, variant = 'primary' }) => 
+      variant === 'primary' ? `${theme.primary}dd` : 
+      variant === 'secondary' ? `${theme.secondary}dd` : 
+      'rgba(255, 255, 255, 0.1)'};
   }
   
   &:active {
-    transform: scale(0.98);
+    transform: translateY(0);
   }
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
   }
 `
 
 export const Main = styled.main`
   max-width: 1280px;
   margin: 0 auto;
-  padding: 32px 16px;
+  padding: 32px 24px;
   
   @media (min-width: 768px) {
-    padding: 32px;
+    padding: 48px 32px;
   }
 `
 
 export const Section = styled.div`
-  margin-bottom: 32px;
+  margin-bottom: 48px;
   animation: ${fadeIn} 0.8s ease-out;
   animation-fill-mode: both;
   
@@ -119,16 +137,17 @@ export const Section = styled.div`
 export const SectionHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 24px;
 `
 
 export const SectionTitle = styled.h2`
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   color: ${({ theme }) => theme.mutedForeground};
+  font-family: 'JetBrains Mono', monospace;
 `
 
 const scaleIn = keyframes`
@@ -143,72 +162,92 @@ const scaleIn = keyframes`
 `
 
 export const Card = styled.div`
-  background-color: ${({ theme }) => theme.card};
-  border: 1px solid ${({ theme }) => theme.border};
-  border-radius: 8px;
-  padding: 16px;
+  background: ${({ theme }) => theme.glass};
+  backdrop-filter: blur(10px);
+  border: 1px solid ${({ theme }) => theme.glassBorder};
+  border-radius: 12px;
+  padding: 20px;
   animation: ${scaleIn} 0.5s ease-out;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    border-color: ${({ theme }) => theme.primary}33;
   }
 `
 
 export const Input = styled.input`
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid ${({ theme }) => theme.border};
-  border-radius: 6px;
-  background-color: ${({ theme }) => theme.background};
+  padding: 10px 14px;
+  border: 1px solid ${({ theme }) => theme.glassBorder};
+  border-radius: 8px;
+  background: ${({ theme }) => theme.glass};
+  backdrop-filter: blur(10px);
   color: ${({ theme }) => theme.foreground};
   font-size: 14px;
-  transition: all 0.3s ease;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s ease;
   
   &:focus {
     outline: none;
-    border-color: ${({ theme }) => theme.ring};
+    border-color: ${({ theme }) => theme.primary};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.primary}22;
+    background: ${({ theme }) => theme.muted};
   }
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  
+  &::placeholder {
+    color: ${({ theme }) => theme.mutedForeground};
+    opacity: 0.5;
   }
 `
 
 export const TextArea = styled.textarea`
   width: 100%;
-  padding: 12px;
-  border: 1px solid ${({ theme }) => theme.border};
-  border-radius: 6px;
-  background-color: ${({ theme }) => theme.background};
+  padding: 12px 14px;
+  border: 1px solid ${({ theme }) => theme.glassBorder};
+  border-radius: 8px;
+  background: ${({ theme }) => theme.glass};
+  backdrop-filter: blur(10px);
   color: ${({ theme }) => theme.foreground};
   font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
   resize: none;
-  min-height: 100px;
-  transition: all 0.3s ease;
+  min-height: 120px;
+  transition: all 0.2s ease;
   
   &:focus {
     outline: none;
-    border-color: ${({ theme }) => theme.ring};
+    border-color: ${({ theme }) => theme.primary};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.primary}22;
+    background: ${({ theme }) => theme.muted};
   }
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
+  
+  &::placeholder {
+    color: ${({ theme }) => theme.mutedForeground};
+    opacity: 0.5;
+  }
 `
 
 export const Form = styled.form`
   display: flex;
-  gap: 8px;
+  gap: 12px;
 `
 
 export const Grid = styled.div<{ cols?: number }>`
   display: grid;
   grid-template-columns: repeat(${({ cols = 1 }) => cols}, 1fr);
-  gap: 16px;
+  gap: 24px;
   
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
@@ -218,7 +257,7 @@ export const Grid = styled.div<{ cols?: number }>`
 export const MetricCard = styled(Card)`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   animation: ${scaleIn} 0.6s ease-out;
   animation-fill-mode: both;
   
@@ -237,22 +276,37 @@ export const MetricHeader = styled.div`
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: ${({ theme }) => theme.mutedForeground};
+  font-family: 'JetBrains Mono', monospace;
 `
 
 export const MetricContent = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 `
 
 export const MetricRow = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  align-items: center;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  
+  span:first-child {
+    color: ${({ theme }) => theme.mutedForeground};
+    opacity: 0.7;
+  }
+  
+  span:last-child {
+    color: ${({ theme }) => theme.foreground};
+    font-weight: 500;
+  }
 `
 
 export const Certainty = styled.span`
-  opacity: 0.6;
+  opacity: 0.5;
   margin-left: 4px;
+  font-size: 11px;
 `

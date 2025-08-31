@@ -2,6 +2,8 @@ import { createGlobalStyle } from 'styled-components'
 import { Theme } from './theme'
 
 export const GlobalStyles = createGlobalStyle<{ theme: Theme }>`
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+  
   * {
     margin: 0;
     padding: 0;
@@ -13,13 +15,14 @@ export const GlobalStyles = createGlobalStyle<{ theme: Theme }>`
   }
 
   body {
-    background-color: ${({ theme }) => theme.background};
+    background: ${({ theme }) => theme.background};
     color: ${({ theme }) => theme.foreground};
-    font-family: 'SF Mono', Monaco, Inconsolata, 'Fira Code', 'Courier New', monospace;
+    font-family: 'JetBrains Mono', 'SF Mono', Monaco, Inconsolata, 'Fira Code', 'Courier New', monospace;
     font-size: 14px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -44,7 +47,7 @@ export const GlobalStyles = createGlobalStyle<{ theme: Theme }>`
 
   ::placeholder {
     color: ${({ theme }) => theme.mutedForeground};
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   ::-webkit-scrollbar {
@@ -53,7 +56,7 @@ export const GlobalStyles = createGlobalStyle<{ theme: Theme }>`
   }
 
   ::-webkit-scrollbar-track {
-    background: ${({ theme }) => theme.background};
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -63,5 +66,6 @@ export const GlobalStyles = createGlobalStyle<{ theme: Theme }>`
 
   ::-webkit-scrollbar-thumb:hover {
     background: ${({ theme }) => theme.mutedForeground};
+    opacity: 0.5;
   }
 `

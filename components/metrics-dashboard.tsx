@@ -6,6 +6,7 @@ import LineChart from './charts/line-chart'
 import MacroChart from './charts/macro-chart'
 import ActivityHeatmap from './charts/activity-heatmap'
 import SleepChart from './charts/sleep-chart'
+import WeightForecast from './charts/weight-forecast'
 import { format } from 'date-fns'
 import styled from 'styled-components'
 import { Card, Grid } from './styled'
@@ -283,6 +284,13 @@ export default function MetricsDashboard() {
           <StatLabel>Avg steps/day</StatLabel>
         </StatCard>
       </StatsGrid>
+
+      {weightData.length > 2 && (
+        <DashboardSection>
+          <SectionTitle>Weight forecast</SectionTitle>
+          <WeightForecast entries={entries} />
+        </DashboardSection>
+      )}
 
       <DashboardSection>
         <SectionTitle>Nutrition</SectionTitle>
