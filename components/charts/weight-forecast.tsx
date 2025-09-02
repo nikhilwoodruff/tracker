@@ -231,51 +231,89 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     const lastWeight = weightEntries[weightEntries.length - 1].weight_kg
     const lastDate = new Date(weightEntries[weightEntries.length - 1].date)
     
-    // Calculate recent averages (last 14 days)
-    const recentEntries = entries
-      .filter(e => new Date(e.date) >= subDays(lastDate, 14))
+    // Calculate today's macros
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayEntry = entries.find(e => {
+      const entryDate = new Date(e.date)
+      entryDate.setHours(0, 0, 0, 0)
+      return entryDate.getTime() === today.getTime()
+    })
+    
+    const todayCalories = todayEntry?.calories || 2000
+    const todayProtein = todayEntry?.protein_g || 80
+    const todayCarbs = todayEntry?.carbs_g || 250
+    const todayFat = todayEntry?.fat_g || 70
+    const todayExercise = todayEntry?.exercise_minutes || 30
+    const todaySteps = todayEntry?.steps || 8000
+    
+    // Calculate weekly averages (last 7 days)
+    const weekEntries = entries
+      .filter(e => new Date(e.date) >= subDays(lastDate, 7))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     
-    const avgCalories = recentEntries.reduce((sum, e) => sum + (e.calories || 0), 0) / recentEntries.length || 2000
-    const avgProtein = recentEntries.reduce((sum, e) => sum + (e.protein_g || 0), 0) / recentEntries.length || 80
-    const avgCarbs = recentEntries.reduce((sum, e) => sum + (e.carbs_g || 0), 0) / recentEntries.length || 250
-    const avgFat = recentEntries.reduce((sum, e) => sum + (e.fat_g || 0), 0) / recentEntries.length || 70
-    const avgExercise = recentEntries.reduce((sum, e) => sum + (e.exercise_minutes || 0), 0) / recentEntries.length || 30
-    const avgSteps = recentEntries.reduce((sum, e) => sum + (e.steps || 0), 0) / recentEntries.length || 8000
+    const weekCalories = weekEntries.reduce((sum, e) => sum + (e.calories || 0), 0) / weekEntries.length || 2000
+    const weekProtein = weekEntries.reduce((sum, e) => sum + (e.protein_g || 0), 0) / weekEntries.length || 80
+    const weekCarbs = weekEntries.reduce((sum, e) => sum + (e.carbs_g || 0), 0) / weekEntries.length || 250
+    const weekFat = weekEntries.reduce((sum, e) => sum + (e.fat_g || 0), 0) / weekEntries.length || 70
+    const weekExercise = weekEntries.reduce((sum, e) => sum + (e.exercise_minutes || 0), 0) / weekEntries.length || 30
+    const weekSteps = weekEntries.reduce((sum, e) => sum + (e.steps || 0), 0) / weekEntries.length || 8000
 
-    // Generate 90-day forecast
+    // Generate 90-day forecasts for both scenarios
     const forecastDays = 90
-    const forecast = []
-    let currentWeight = lastWeight
+    const todayForecast = []
+    const weekForecast = []
+    let todayWeight = lastWeight
+    let weekWeight = lastWeight
     
     for (let i = 1; i <= forecastDays; i++) {
-      currentWeight = predictWeightChange(
-        currentWeight,
-        avgCalories,
-        avgProtein,
-        avgCarbs,
-        avgFat,
-        avgExercise,
-        avgSteps,
+      // Today's macros forecast
+      todayWeight = predictWeightChange(
+        todayWeight,
+        todayCalories,
+        todayProtein,
+        todayCarbs,
+        todayFat,
+        todayExercise,
+        todaySteps,
+        1
+      )
+      
+      // Weekly average macros forecast
+      weekWeight = predictWeightChange(
+        weekWeight,
+        weekCalories,
+        weekProtein,
+        weekCarbs,
+        weekFat,
+        weekExercise,
+        weekSteps,
         1
       )
       
       const forecastDate = addDays(lastDate, i)
       const uncertainty = backtestResults.std * Math.sqrt(i) * 0.1 // Uncertainty grows with time
       
-      forecast.push({
+      todayForecast.push({
         date: forecastDate,
-        weight: currentWeight,
-        lower: currentWeight - uncertainty * confidenceMultiplier,
-        upper: currentWeight + uncertainty * confidenceMultiplier
+        weight: todayWeight,
+        lower: todayWeight - uncertainty * confidenceMultiplier,
+        upper: todayWeight + uncertainty * confidenceMultiplier
+      })
+      
+      weekForecast.push({
+        date: forecastDate,
+        weight: weekWeight,
+        lower: weekWeight - uncertainty * confidenceMultiplier,
+        upper: weekWeight + uncertainty * confidenceMultiplier
       })
     }
 
-    // Set forecast summary
+    // Set forecast summary (using weekly average as default)
     setForecastSummary({
       current: lastWeight,
-      projected: forecast[forecast.length - 1].weight,
-      change: forecast[forecast.length - 1].weight - lastWeight
+      projected: weekForecast[weekForecast.length - 1].weight,
+      change: weekForecast[weekForecast.length - 1].weight - lastWeight
     })
 
     // Combine historical and forecast data
@@ -299,15 +337,18 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     const xScale = d3.scaleTime()
       .domain([
         d3.min(historicalData, d => d.date) as Date,
-        d3.max(forecast, d => d.date) as Date
+        d3.max(todayForecast, d => d.date) as Date
       ])
       .range([0, width])
 
     const allWeights = [
       ...historicalData.map(d => d.weight),
-      ...forecast.map(d => d.weight),
-      ...forecast.map(d => d.lower),
-      ...forecast.map(d => d.upper)
+      ...todayForecast.map(d => d.weight),
+      ...todayForecast.map(d => d.lower),
+      ...todayForecast.map(d => d.upper),
+      ...weekForecast.map(d => d.weight),
+      ...weekForecast.map(d => d.lower),
+      ...weekForecast.map(d => d.upper)
     ]
 
     const yScale = d3.scaleLinear()
@@ -351,16 +392,23 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .style('font-family', 'JetBrains Mono, monospace')
       .style('font-size', '11px')
 
-    // Add confidence band
+    // Add confidence bands for both forecasts
     const area = d3.area<any>()
       .x(d => xScale(d.date))
       .y0(d => yScale(d.lower))
       .y1(d => yScale(d.upper))
       .curve(d3.curveMonotoneX)
 
+    // Today's macros confidence band
     g.append('path')
-      .datum(forecast)
-      .attr('fill', 'rgba(59, 130, 246, 0.1)')
+      .datum(todayForecast)
+      .attr('fill', 'rgba(239, 68, 68, 0.08)')
+      .attr('d', area)
+    
+    // Weekly average confidence band
+    g.append('path')
+      .datum(weekForecast)
+      .attr('fill', 'rgba(59, 130, 246, 0.08)')
       .attr('d', area)
 
     // Add historical line
@@ -376,20 +424,42 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .attr('stroke-width', 2)
       .attr('d', historicalLine)
 
-    // Add forecast line
+    // Add forecast lines
     const forecastLine = d3.line<any>()
       .x(d => xScale(d.date))
       .y(d => yScale(d.weight))
       .curve(d3.curveMonotoneX)
 
-    // Connect historical to forecast
-    const connectionData = [
+    // Connect historical to forecasts
+    const todayConnectionData = [
       historicalData[historicalData.length - 1],
-      { date: forecast[0].date, weight: forecast[0].weight }
+      { date: todayForecast[0].date, weight: todayForecast[0].weight }
+    ]
+    
+    const weekConnectionData = [
+      historicalData[historicalData.length - 1],
+      { date: weekForecast[0].date, weight: weekForecast[0].weight }
     ]
 
+    // Today's macros forecast (red)
     g.append('path')
-      .datum(connectionData)
+      .datum(todayConnectionData)
+      .attr('fill', 'none')
+      .attr('stroke', 'rgb(239, 68, 68)')
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', '5,5')
+      .attr('d', historicalLine)
+
+    g.append('path')
+      .datum(todayForecast)
+      .attr('fill', 'none')
+      .attr('stroke', 'rgb(239, 68, 68)')
+      .attr('stroke-width', 2)
+      .attr('d', forecastLine)
+    
+    // Weekly average forecast (blue)
+    g.append('path')
+      .datum(weekConnectionData)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(59, 130, 246)')
       .attr('stroke-width', 2)
@@ -397,7 +467,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .attr('d', historicalLine)
 
     g.append('path')
-      .datum(forecast)
+      .datum(weekForecast)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(59, 130, 246)')
       .attr('stroke-width', 2)
@@ -430,11 +500,48 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
         d3.select(tooltipRef.current).classed('visible', false)
       })
 
-    // Add invisible dots for forecast with hover
-    g.selectAll('.forecast-dot')
-      .data(forecast.filter((_, i) => i % 5 === 0)) // Every 5th day for performance
+    // Add invisible dots for today's forecast with hover
+    g.selectAll('.today-forecast-dot')
+      .data(todayForecast.filter((_, i) => i % 5 === 0)) // Every 5th day for performance
       .enter().append('circle')
-      .attr('class', 'forecast-dot')
+      .attr('class', 'today-forecast-dot')
+      .attr('cx', d => xScale(d.date))
+      .attr('cy', d => yScale(d.weight))
+      .attr('r', 8)
+      .attr('fill', 'transparent')
+      .style('cursor', 'pointer')
+      .on('mouseover', function(event, d) {
+        // Add visible dot on hover
+        g.append('circle')
+          .attr('class', 'hover-dot')
+          .attr('cx', xScale(d.date))
+          .attr('cy', yScale(d.weight))
+          .attr('r', 4)
+          .attr('fill', 'rgb(239, 68, 68)')
+        
+        const tooltip = d3.select(tooltipRef.current)
+        tooltip.classed('visible', true)
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 10}px`)
+          .html(`
+            <div style="color: rgb(239, 68, 68)">Today's macros</div>
+            <div>${format(d.date, 'MMM d, yyyy')}</div>
+            <div>${d.weight.toFixed(1)} kg</div>
+            <div style="opacity: 0.7; font-size: 10px">
+              95% CI: ${d.lower.toFixed(1)} - ${d.upper.toFixed(1)} kg
+            </div>
+          `)
+      })
+      .on('mouseout', function() {
+        g.selectAll('.hover-dot').remove()
+        d3.select(tooltipRef.current).classed('visible', false)
+      })
+    
+    // Add invisible dots for weekly forecast with hover
+    g.selectAll('.week-forecast-dot')
+      .data(weekForecast.filter((_, i) => i % 5 === 0)) // Every 5th day for performance
+      .enter().append('circle')
+      .attr('class', 'week-forecast-dot')
       .attr('cx', d => xScale(d.date))
       .attr('cy', d => yScale(d.weight))
       .attr('r', 8)
@@ -454,7 +561,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
           .style('left', `${event.pageX + 10}px`)
           .style('top', `${event.pageY - 10}px`)
           .html(`
-            <div style="color: rgb(59, 130, 246)">Forecast</div>
+            <div style="color: rgb(59, 130, 246)">Weekly average</div>
             <div>${format(d.date, 'MMM d, yyyy')}</div>
             <div>${d.weight.toFixed(1)} kg</div>
             <div style="opacity: 0.7; font-size: 10px">
@@ -555,11 +662,15 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
           <span>Historical</span>
         </LegendItem>
         <LegendItem>
-          <LegendColor $color="rgb(59, 130, 246)" />
-          <span>Forecast</span>
+          <LegendColor $color="rgb(239, 68, 68)" />
+          <span>Today's macros</span>
         </LegendItem>
         <LegendItem>
-          <LegendColor $color="rgba(59, 130, 246, 0.1)" />
+          <LegendColor $color="rgb(59, 130, 246)" />
+          <span>Weekly average</span>
+        </LegendItem>
+        <LegendItem>
+          <LegendColor $color="rgba(128, 128, 128, 0.2)" />
           <span>95% CI</span>
         </LegendItem>
       </Legend>
