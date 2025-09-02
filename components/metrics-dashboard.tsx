@@ -9,7 +9,8 @@ import SleepChart from './charts/sleep-chart'
 import WeightForecast from './charts/weight-forecast'
 import { format } from 'date-fns'
 import styled from 'styled-components'
-import { Card, Grid } from './styled'
+import { Card, Grid, Button } from './styled'
+import { RefreshCw } from 'lucide-react'
 
 const DashboardSection = styled.div`
   margin-bottom: 32px;
@@ -49,6 +50,31 @@ const EntryHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 4px;
+`
+
+const EntryActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`
+
+const RerunButton = styled(Button)`
+  padding: 2px 6px;
+  font-size: 10px;
+  background: transparent;
+  border: 1px solid ${({ theme }) => theme.border};
+  color: ${({ theme }) => theme.mutedForeground};
+  
+  &:hover {
+    background: ${({ theme }) => theme.secondary};
+    color: ${({ theme }) => theme.foreground};
+  }
+  
+  svg {
+    width: 10px;
+    height: 10px;
+    margin-right: 4px;
+  }
 `
 
 const EntryDate = styled.span`
@@ -106,6 +132,7 @@ const StatLabel = styled.div`
 export default function MetricsDashboard() {
   const [entries, setEntries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [rerunning, setRerunning] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -136,6 +163,28 @@ export default function MetricsDashboard() {
       setEntries(data)
     }
     setLoading(false)
+  }
+
+  const handleRerun = async (entry: any) => {
+    if (!entry.content) return
+    
+    setRerunning(entry.id)
+    try {
+      const { processEntry } = await import('@/lib/process-entry')
+      const data = await processEntry(entry.content, entry.date)
+      
+      if (data.success) {
+        // Refresh entries to show updated data
+        await fetchEntries()
+      } else {
+        alert('Failed to reprocess entry')
+      }
+    } catch (error) {
+      console.error('Error reprocessing:', error)
+      alert('Failed to reprocess entry')
+    } finally {
+      setRerunning(null)
+    }
   }
 
   if (loading) return <LoadingMessage>Loading metrics...</LoadingMessage>
@@ -411,7 +460,17 @@ export default function MetricsDashboard() {
           <Entry key={entry.id}>
             <EntryHeader>
               <EntryDate>{format(new Date(entry.date), 'MMM d, yyyy')}</EntryDate>
-              {entry.category && <CategoryBadge>{entry.category}</CategoryBadge>}
+              <EntryActions>
+                {entry.category && <CategoryBadge>{entry.category}</CategoryBadge>}
+                <RerunButton 
+                  onClick={() => handleRerun(entry)}
+                  disabled={rerunning === entry.id}
+                  title="Rerun AI analysis"
+                >
+                  <RefreshCw />
+                  {rerunning === entry.id ? 'Processing...' : 'Rerun'}
+                </RerunButton>
+              </EntryActions>
             </EntryHeader>
             <EntryContent>{entry.content}</EntryContent>
             <EntryMetrics>

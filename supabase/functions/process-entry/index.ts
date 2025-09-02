@@ -15,6 +15,9 @@ const anthropic = new Anthropic({
 
 const SYSTEM_PROMPT = `You are an AI assistant that extracts structured data from daily journal entries. Analyze the user's message and extract ALL relevant metrics with certainty scores (0-1 scale).
 
+CRITICAL CALORIE ESTIMATION RULES:
+- Be RIGOROUS with calorie counting - aim for CENTRAL CASE estimates, not conservative ones
+
 Return ONLY a JSON object with the following structure (no additional text or notes):
 {
   "nutrition": {
@@ -84,7 +87,7 @@ Return ONLY a JSON object with the following structure (no additional text or no
 
 IMPORTANT INSTRUCTIONS:
 1. ALWAYS provide estimates for ALL metrics except weight - never use null except for weight
-2. For nutrition: Estimate calories, protein, carbs, fat, fiber for EVERYTHING eaten. Use typical values if not sure
+2. For nutrition: Estimate calories, protein, carbs, fat, fiber for EVERYTHING eaten. VERIFY: calories ≈ (protein_g × 4) + (carbs_g × 4) + (fat_g × 9). Adjust if needed
 3. For hourly_activities: Fill in ALL 24 hours (0-23). Use reasonable assumptions:
    - Default sleeping hours: 0-6 or 23-6 based on bedtime mentions
    - Fill work hours if mentioned (e.g., "worked 9-5" = working from 9-17)
@@ -114,7 +117,7 @@ serve(async (req) => {
     }
 
     const completion = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-opus-20240229',
       max_tokens: 2000,
       temperature: 0.3,
       system: SYSTEM_PROMPT,

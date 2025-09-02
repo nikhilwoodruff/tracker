@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import styled, { keyframes } from 'styled-components'
 import { Send, Activity, Brain, Moon, Clock, Utensils, Weight, Calendar } from 'lucide-react'
 import { Form, TextArea, Button, Card, Grid, MetricCard, MetricHeader, MetricContent, MetricRow, Certainty } from './styled'
+import { createClient } from '@/lib/supabase/client'
 
 const ChatForm = styled(Form)`
   width: 100%;
@@ -69,6 +70,31 @@ export default function ChatInterface() {
   const [loading, setLoading] = useState(false)
   const [response, setResponse] = useState<any>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const supabase = createClient()
+
+  // Load existing entry when date changes
+  useEffect(() => {
+    loadExistingEntry()
+  }, [selectedDate])
+
+  const loadExistingEntry = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('entries')
+        .select('content')
+        .eq('date', selectedDate)
+        .single()
+      
+      if (data && data.content) {
+        setMessage(data.content)
+      } else {
+        setMessage('')
+      }
+    } catch (error) {
+      // No existing entry for this date
+      setMessage('')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
