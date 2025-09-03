@@ -226,7 +226,6 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     }
 
     const backtestResults = backtest()
-    const confidenceMultiplier = 1.96 // 95% confidence interval
 
     // Generate forecast
     const lastWeight = weightEntries[weightEntries.length - 1].weight_kg
@@ -293,20 +292,15 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       )
       
       const forecastDate = addDays(lastDate, i)
-      const uncertainty = backtestResults.std * Math.sqrt(i) * 0.1 // Uncertainty grows with time
       
       todayForecast.push({
         date: forecastDate,
-        weight: todayWeight,
-        lower: todayWeight - uncertainty * confidenceMultiplier,
-        upper: todayWeight + uncertainty * confidenceMultiplier
+        weight: todayWeight
       })
       
       weekForecast.push({
         date: forecastDate,
-        weight: weekWeight,
-        lower: weekWeight - uncertainty * confidenceMultiplier,
-        upper: weekWeight + uncertainty * confidenceMultiplier
+        weight: weekWeight
       })
     }
 
@@ -453,11 +447,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     const allWeights = [
       ...historicalData.map(d => d.weight),
       ...todayForecast.map(d => d.weight),
-      ...todayForecast.map(d => d.lower),
-      ...todayForecast.map(d => d.upper),
       ...weekForecast.map(d => d.weight),
-      ...weekForecast.map(d => d.lower),
-      ...weekForecast.map(d => d.upper),
       ...historicalForecasts.flatMap((f: any) => f.data.map((d: any) => d.weight))
     ]
 
@@ -505,25 +495,6 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .style('color', 'rgba(255, 255, 255, 0.7)')
       .style('font-family', 'JetBrains Mono, monospace')
       .style('font-size', '11px')
-
-    // Add confidence bands for both forecasts
-    const area = d3.area<any>()
-      .x(d => xScale(d.date))
-      .y0(d => yScale(d.lower))
-      .y1(d => yScale(d.upper))
-      .curve(d3.curveMonotoneX)
-
-    // Today's macros confidence band
-    content.append('path')
-      .datum(todayForecast)
-      .attr('fill', 'rgba(239, 68, 68, 0.08)')
-      .attr('d', area)
-    
-    // Weekly average confidence band
-    content.append('path')
-      .datum(weekForecast)
-      .attr('fill', 'rgba(59, 130, 246, 0.08)')
-      .attr('d', area)
 
     // Add historical line
     const historicalLine = d3.line<any>()
@@ -632,15 +603,6 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .style('cursor', 'pointer')
       .on('mouseover', function(event, d) {
         d3.select(this).attr('r', 6)
-        const tooltip = d3.select(tooltipRef.current)
-        tooltip.classed('visible', true)
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 10}px`)
-          .html(`
-            <div style="color: rgb(16, 185, 129)">Historical</div>
-            <div>${format(d.date, 'MMM d, yyyy')}</div>
-            <div>${d.weight.toFixed(1)} kg</div>
-          `)
       })
       .on('mouseout', function() {
         d3.select(this).attr('r', 4)
@@ -703,11 +665,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
           .attr('d', function(this: any) {
             const data = d3.select(this).datum()
             if (Array.isArray(data)) {
-              if (data[0]?.lower !== undefined) {
-                return area(data)
-              } else {
-                return data[0]?.weight !== undefined ? forecastLine(data) : historicalLine(data)
-              }
+              return data[0]?.weight !== undefined ? forecastLine(data) : historicalLine(data)
             }
             return null
           })
