@@ -262,8 +262,8 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
 
     // Generate 90-day forecasts for both scenarios
     const forecastDays = 90
-    const todayForecast = []
-    const weekForecast = []
+    const todayForecast: any[] = []
+    const weekForecast: any[] = []
     let todayWeight = lastWeight
     let weekWeight = lastWeight
     
@@ -347,7 +347,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     }
 
     // Generate forecasts from past 3 days
-    const historicalForecasts = []
+    const historicalForecasts: any[] = []
     for (let daysAgo = 1; daysAgo <= 3; daysAgo++) {
       const historicalDate = subDays(lastDate, daysAgo)
       
@@ -458,7 +458,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       ...weekForecast.map(d => d.weight),
       ...weekForecast.map(d => d.lower),
       ...weekForecast.map(d => d.upper),
-      ...historicalForecasts.flatMap(f => f.data.map(d => d.weight))
+      ...historicalForecasts.flatMap((f: any) => f.data.map((d: any) => d.weight))
     ]
 
     const yScale = d3.scaleLinear()
