@@ -106,6 +106,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     projected: number
     change: number
   } | null>(null)
+  const [zoomTransform, setZoomTransform] = useState<d3.ZoomTransform | null>(null)
 
   useEffect(() => {
     if (!svgRef.current || entries.length === 0) return
@@ -309,6 +310,102 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       })
     }
 
+    // Function to interpolate weight for a given date
+    const interpolateWeight = (targetDate: Date) => {
+      const targetTime = targetDate.getTime()
+      
+      // Find surrounding weight entries
+      let before = null
+      let after = null
+      
+      for (let i = 0; i < weightEntries.length; i++) {
+        const entryTime = new Date(weightEntries[i].date).getTime()
+        
+        if (entryTime <= targetTime) {
+          before = weightEntries[i]
+        }
+        if (entryTime >= targetTime && !after) {
+          after = weightEntries[i]
+        }
+      }
+      
+      if (!before && after) return after.weight_kg
+      if (before && !after) return before.weight_kg
+      if (!before && !after) return lastWeight
+      
+      if (before && after) {
+        if (before === after) return before.weight_kg
+        
+        // Linear interpolation
+        const beforeTime = new Date(before.date).getTime()
+        const afterTime = new Date(after.date).getTime()
+        const ratio = (targetTime - beforeTime) / (afterTime - beforeTime)
+        return before.weight_kg + (after.weight_kg - before.weight_kg) * ratio
+      }
+      
+      return lastWeight
+    }
+
+    // Generate forecasts from past 3 days
+    const historicalForecasts = []
+    for (let daysAgo = 1; daysAgo <= 3; daysAgo++) {
+      const historicalDate = subDays(lastDate, daysAgo)
+      
+      // Interpolate weight for this date
+      const interpolatedWeight = interpolateWeight(historicalDate)
+      
+      // Get the macros from that day
+      const dayEntry = entries.find(e => {
+        const entryDate = new Date(e.date)
+        entryDate.setHours(0, 0, 0, 0)
+        const targetDate = new Date(historicalDate)
+        targetDate.setHours(0, 0, 0, 0)
+        return entryDate.getTime() === targetDate.getTime()
+      })
+      
+      const dayCalories = dayEntry?.calories || 2000
+      const dayProtein = dayEntry?.protein_g || 80
+      const dayCarbs = dayEntry?.carbs_g || 250
+      const dayFat = dayEntry?.fat_g || 70
+      const dayExercise = dayEntry?.exercise_minutes || 30
+      const daySteps = dayEntry?.steps || 8000
+      
+      // Generate forecast from that day
+      const forecast = []
+      let weight = interpolatedWeight
+      const startDate = historicalDate
+      
+      for (let i = 1; i <= forecastDays + daysAgo; i++) {
+        weight = predictWeightChange(
+          weight,
+          dayCalories,
+          dayProtein,
+          dayCarbs,
+          dayFat,
+          dayExercise,
+          daySteps,
+          1
+        )
+        
+        const forecastDate = addDays(startDate, i)
+        if (forecastDate <= weekForecast[weekForecast.length - 1].date) {
+          forecast.push({
+            date: forecastDate,
+            weight: weight
+          })
+        }
+      }
+      
+      if (forecast.length > 0) {
+        historicalForecasts.push({
+          startDate: startDate,
+          startWeight: interpolatedWeight,
+          daysAgo: daysAgo,
+          data: forecast
+        })
+      }
+    }
+
     // Set forecast summary (using weekly average as default)
     setForecastSummary({
       current: lastWeight,
@@ -330,8 +427,20 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     const width = svgRef.current.clientWidth - margin.left - margin.right
     const height = svgRef.current.clientHeight - margin.top - margin.bottom
 
+    // Create clip path for zooming
+    svg.append('defs')
+      .append('clipPath')
+      .attr('id', 'clip')
+      .append('rect')
+      .attr('width', width)
+      .attr('height', height)
+
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
+
+    // Create a content group that will be clipped
+    const content = g.append('g')
+      .attr('clip-path', 'url(#clip)')
 
     // Scales
     const xScale = d3.scaleTime()
@@ -348,7 +457,8 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       ...todayForecast.map(d => d.upper),
       ...weekForecast.map(d => d.weight),
       ...weekForecast.map(d => d.lower),
-      ...weekForecast.map(d => d.upper)
+      ...weekForecast.map(d => d.upper),
+      ...historicalForecasts.flatMap(f => f.data.map(d => d.weight))
     ]
 
     const yScale = d3.scaleLinear()
@@ -358,8 +468,12 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       ])
       .range([height, 0])
 
+    // Store original scales for zoom reset
+    const xScaleOriginal = xScale.copy()
+    const yScaleOriginal = yScale.copy()
+
     // Add grid lines
-    g.append('g')
+    const gridX = g.append('g')
       .attr('class', 'grid')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(xScale)
@@ -369,7 +483,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .style('opacity', 0.1)
       .style('stroke', 'rgba(255, 255, 255, 0.1)')
 
-    g.append('g')
+    const gridY = g.append('g')
       .attr('class', 'grid')
       .call(d3.axisLeft(yScale)
         .tickSize(-width)
@@ -379,14 +493,14 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .style('stroke', 'rgba(255, 255, 255, 0.1)')
 
     // Add axes
-    g.append('g')
+    const xAxis = g.append('g')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(xScale).tickFormat(d => format(d as Date, 'MMM d')))
       .style('color', 'rgba(255, 255, 255, 0.7)')
       .style('font-family', 'JetBrains Mono, monospace')
       .style('font-size', '11px')
 
-    g.append('g')
+    const yAxis = g.append('g')
       .call(d3.axisLeft(yScale).tickFormat(d => `${d} kg`))
       .style('color', 'rgba(255, 255, 255, 0.7)')
       .style('font-family', 'JetBrains Mono, monospace')
@@ -400,13 +514,13 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .curve(d3.curveMonotoneX)
 
     // Today's macros confidence band
-    g.append('path')
+    content.append('path')
       .datum(todayForecast)
       .attr('fill', 'rgba(239, 68, 68, 0.08)')
       .attr('d', area)
     
     // Weekly average confidence band
-    g.append('path')
+    content.append('path')
       .datum(weekForecast)
       .attr('fill', 'rgba(59, 130, 246, 0.08)')
       .attr('d', area)
@@ -417,7 +531,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .y(d => yScale(d.weight))
       .curve(d3.curveMonotoneX)
 
-    g.append('path')
+    content.append('path')
       .datum(historicalData)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(16, 185, 129)')
@@ -442,7 +556,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     ]
 
     // Today's macros forecast (red)
-    g.append('path')
+    content.append('path')
       .datum(todayConnectionData)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(239, 68, 68)')
@@ -450,7 +564,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .attr('stroke-dasharray', '5,5')
       .attr('d', historicalLine)
 
-    g.append('path')
+    content.append('path')
       .datum(todayForecast)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(239, 68, 68)')
@@ -458,7 +572,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .attr('d', forecastLine)
     
     // Weekly average forecast (blue)
-    g.append('path')
+    content.append('path')
       .datum(weekConnectionData)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(59, 130, 246)')
@@ -466,15 +580,48 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .attr('stroke-dasharray', '5,5')
       .attr('d', historicalLine)
 
-    g.append('path')
+    content.append('path')
       .datum(weekForecast)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(59, 130, 246)')
       .attr('stroke-width', 2)
       .attr('d', forecastLine)
 
+    // Add historical forecast lines (from past 3 days)
+    const historicalColors = [
+      'rgba(168, 85, 247, 0.5)',  // Purple for 1 day ago
+      'rgba(236, 72, 153, 0.5)',  // Pink for 2 days ago
+      'rgba(251, 146, 60, 0.5)'   // Orange for 3 days ago
+    ]
+    
+    historicalForecasts.forEach((forecast, index) => {
+      // Connect from historical point to forecast
+      const connectionData = [
+        { date: forecast.startDate, weight: forecast.startWeight },
+        forecast.data[0]
+      ]
+      
+      content.append('path')
+        .datum(connectionData)
+        .attr('fill', 'none')
+        .attr('stroke', historicalColors[index])
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '3,3')
+        .attr('d', historicalLine)
+      
+      // Draw the forecast line
+      content.append('path')
+        .datum(forecast.data)
+        .attr('fill', 'none')
+        .attr('stroke', historicalColors[index])
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '3,3')
+        .attr('d', forecastLine)
+        .style('opacity', 0.7)
+    })
+
     // Add dots for historical data with hover
-    g.selectAll('.historical-dot')
+    content.selectAll('.historical-dot')
       .data(historicalData)
       .enter().append('circle')
       .attr('class', 'historical-dot')
@@ -497,86 +644,13 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       })
       .on('mouseout', function() {
         d3.select(this).attr('r', 4)
-        d3.select(tooltipRef.current).classed('visible', false)
       })
 
-    // Add invisible dots for today's forecast with hover
-    g.selectAll('.today-forecast-dot')
-      .data(todayForecast.filter((_, i) => i % 5 === 0)) // Every 5th day for performance
-      .enter().append('circle')
-      .attr('class', 'today-forecast-dot')
-      .attr('cx', d => xScale(d.date))
-      .attr('cy', d => yScale(d.weight))
-      .attr('r', 8)
-      .attr('fill', 'transparent')
-      .style('cursor', 'pointer')
-      .on('mouseover', function(event, d) {
-        // Add visible dot on hover
-        g.append('circle')
-          .attr('class', 'hover-dot')
-          .attr('cx', xScale(d.date))
-          .attr('cy', yScale(d.weight))
-          .attr('r', 4)
-          .attr('fill', 'rgb(239, 68, 68)')
-        
-        const tooltip = d3.select(tooltipRef.current)
-        tooltip.classed('visible', true)
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 10}px`)
-          .html(`
-            <div style="color: rgb(239, 68, 68)">Today's macros</div>
-            <div>${format(d.date, 'MMM d, yyyy')}</div>
-            <div>${d.weight.toFixed(1)} kg</div>
-            <div style="opacity: 0.7; font-size: 10px">
-              95% CI: ${d.lower.toFixed(1)} - ${d.upper.toFixed(1)} kg
-            </div>
-          `)
-      })
-      .on('mouseout', function() {
-        g.selectAll('.hover-dot').remove()
-        d3.select(tooltipRef.current).classed('visible', false)
-      })
-    
-    // Add invisible dots for weekly forecast with hover
-    g.selectAll('.week-forecast-dot')
-      .data(weekForecast.filter((_, i) => i % 5 === 0)) // Every 5th day for performance
-      .enter().append('circle')
-      .attr('class', 'week-forecast-dot')
-      .attr('cx', d => xScale(d.date))
-      .attr('cy', d => yScale(d.weight))
-      .attr('r', 8)
-      .attr('fill', 'transparent')
-      .style('cursor', 'pointer')
-      .on('mouseover', function(event, d) {
-        // Add visible dot on hover
-        g.append('circle')
-          .attr('class', 'hover-dot')
-          .attr('cx', xScale(d.date))
-          .attr('cy', yScale(d.weight))
-          .attr('r', 4)
-          .attr('fill', 'rgb(59, 130, 246)')
-        
-        const tooltip = d3.select(tooltipRef.current)
-        tooltip.classed('visible', true)
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 10}px`)
-          .html(`
-            <div style="color: rgb(59, 130, 246)">Weekly average</div>
-            <div>${format(d.date, 'MMM d, yyyy')}</div>
-            <div>${d.weight.toFixed(1)} kg</div>
-            <div style="opacity: 0.7; font-size: 10px">
-              95% CI: ${d.lower.toFixed(1)} - ${d.upper.toFixed(1)} kg
-            </div>
-          `)
-      })
-      .on('mouseout', function() {
-        g.selectAll('.hover-dot').remove()
-        d3.select(tooltipRef.current).classed('visible', false)
-      })
+    // Remove the invisible hover dots since we now have a hover line for all data
 
     // Add backtesting dots if available
     if (backtestResults.predictions.length > 0) {
-      g.selectAll('.backtest-dot')
+      content.selectAll('.backtest-dot')
         .data(backtestResults.predictions.slice(-10)) // Show last 10 backtests
         .enter().append('circle')
         .attr('class', 'backtest-dot')
@@ -587,7 +661,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     }
 
     // Add vertical line for "today"
-    g.append('line')
+    content.append('line')
       .attr('x1', xScale(lastDate))
       .attr('x2', xScale(lastDate))
       .attr('y1', 0)
@@ -595,6 +669,202 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .attr('stroke', 'rgba(255, 255, 255, 0.2)')
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
+
+    // Add zoom functionality
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([1, 10])
+      .extent([[0, 0], [width, height]])
+      .translateExtent([[0, 0], [width, height]])
+      .on('zoom', (event) => {
+        const newXScale = event.transform.rescaleX(xScaleOriginal)
+        const newYScale = event.transform.rescaleY(yScaleOriginal)
+        
+        // Update scales
+        xScale.domain(newXScale.domain())
+        yScale.domain(newYScale.domain())
+        
+        // Update axes
+        xAxis.call(d3.axisBottom(xScale).tickFormat(d => format(d as Date, 'MMM d')))
+        yAxis.call(d3.axisLeft(yScale).tickFormat(d => `${d} kg`))
+        
+        // Update grid lines
+        gridX.call(d3.axisBottom(xScale)
+          .tickSize(-height)
+          .tickFormat(() => ''))
+        gridY.call(d3.axisLeft(yScale)
+          .tickSize(-width)
+          .tickFormat(() => ''))
+        
+        // Update all paths
+        content.selectAll('path')
+          .filter(function() { 
+            return d3.select(this).datum() !== null 
+          })
+          .attr('d', function(this: any) {
+            const data = d3.select(this).datum()
+            if (Array.isArray(data)) {
+              if (data[0]?.lower !== undefined) {
+                return area(data)
+              } else {
+                return data[0]?.weight !== undefined ? forecastLine(data) : historicalLine(data)
+              }
+            }
+            return null
+          })
+        
+        // Update dots
+        content.selectAll('.historical-dot')
+          .attr('cx', (d: any) => xScale(d.date))
+          .attr('cy', (d: any) => yScale(d.weight))
+        
+        content.selectAll('.backtest-dot')
+          .attr('cx', (d: any) => xScale(d.date))
+          .attr('cy', (d: any) => yScale(d.predicted))
+        
+        // Update vertical line
+        content.select('line')
+          .attr('x1', xScale(lastDate))
+          .attr('x2', xScale(lastDate))
+        
+        setZoomTransform(event.transform)
+      })
+
+    // Add marquee zoom
+    const brush = d3.brush()
+      .extent([[0, 0], [width, height]])
+      .on('end', function(event) {
+        if (!event.selection) return
+        
+        const [[x0, y0], [x1, y1]] = event.selection
+        
+        // Remove the brush
+        d3.select(this).call(brush.move, null)
+        
+        // Calculate zoom to fit the selection
+        const k = Math.min(width / (x1 - x0), height / (y1 - y0))
+        
+        // Calculate translation to align the zoomed area with the viewport
+        const tx = -x0 * k
+        const ty = -y0 * k
+        
+        // Create and apply the transform
+        const transform = d3.zoomIdentity.translate(tx, ty).scale(k)
+        
+        // Apply the zoom transform with animation
+        svg.transition()
+          .duration(750)
+          .call(zoom.transform, transform)
+      })
+    
+    // Add brush layer
+    const brushLayer = g.append('g')
+      .attr('class', 'brush')
+      .call(brush)
+    
+    // Style the brush
+    brushLayer.selectAll('.selection')
+      .style('fill', 'rgba(59, 130, 246, 0.2)')
+      .style('stroke', 'rgb(59, 130, 246)')
+      .style('stroke-width', 1)
+    
+    // Add zoom behavior to svg
+    svg.call(zoom)
+    
+    // Add double-click to reset zoom
+    svg.on('dblclick.zoom', () => {
+      svg.transition()
+        .duration(750)
+        .call(zoom.transform, d3.zoomIdentity)
+    })
+
+    // Add hover line for all forecasts
+    const hoverLine = content.append('line')
+      .attr('class', 'hover-line')
+      .attr('y1', 0)
+      .attr('y2', height)
+      .style('stroke', 'rgba(255, 255, 255, 0.3)')
+      .style('stroke-width', 1)
+      .style('stroke-dasharray', '2,2')
+      .style('display', 'none')
+    
+    // Add mouse tracking
+    svg.on('mousemove', function(event) {
+      const [mx, my] = d3.pointer(event, g.node())
+      
+      if (mx >= 0 && mx <= width && my >= 0 && my <= height) {
+        hoverLine
+          .style('display', 'block')
+          .attr('x1', mx)
+          .attr('x2', mx)
+        
+        // Find closest data point for all lines
+        const date = xScale.invert(mx)
+        const bisector = d3.bisector((d: any) => d.date).left
+        
+        // Show values at this date in tooltip
+        const tooltip = d3.select(tooltipRef.current)
+        const values = []
+        
+        // Check historical data
+        const historicalIndex = bisector(historicalData, date, 1)
+        if (historicalIndex < historicalData.length) {
+          const d0 = historicalData[historicalIndex - 1]
+          const d1 = historicalData[historicalIndex]
+          const closest = date.getTime() - d0?.date.getTime() > d1?.date.getTime() - date.getTime() ? d1 : d0
+          if (closest && Math.abs(closest.date.getTime() - date.getTime()) < 86400000) {
+            values.push(`<div style="color: rgb(16, 185, 129)">Historical: ${closest.weight.toFixed(1)} kg</div>`)
+          }
+        }
+        
+        // Check forecast data
+        const forecastIndex = bisector(todayForecast, date, 1)
+        if (forecastIndex < todayForecast.length) {
+          const d = todayForecast[forecastIndex]
+          if (d) {
+            values.push(`<div style="color: rgb(239, 68, 68)">Today's: ${d.weight.toFixed(1)} kg</div>`)
+          }
+        }
+        
+        const weekIndex = bisector(weekForecast, date, 1)
+        if (weekIndex < weekForecast.length) {
+          const d = weekForecast[weekIndex]
+          if (d) {
+            values.push(`<div style="color: rgb(59, 130, 246)">Weekly: ${d.weight.toFixed(1)} kg</div>`)
+          }
+        }
+        
+        // Check historical forecasts
+        historicalForecasts.forEach((forecast, i) => {
+          const index = bisector(forecast.data, date, 1)
+          if (index < forecast.data.length) {
+            const d = forecast.data[index]
+            if (d) {
+              const colors = ['rgb(168, 85, 247)', 'rgb(236, 72, 153)', 'rgb(251, 146, 60)']
+              values.push(`<div style="color: ${colors[i]}">${forecast.daysAgo}d ago: ${d.weight.toFixed(1)} kg</div>`)
+            }
+          }
+        })
+        
+        if (values.length > 0) {
+          tooltip.classed('visible', true)
+            .style('left', `${event.pageX + 10}px`)
+            .style('top', `${event.pageY - 10}px`)
+            .html(`
+              <div>${format(date, 'MMM d, yyyy')}</div>
+              ${values.join('')}
+            `)
+        } else {
+          tooltip.classed('visible', false)
+        }
+      } else {
+        hoverLine.style('display', 'none')
+        d3.select(tooltipRef.current).classed('visible', false)
+      }
+    })
+    .on('mouseleave', function() {
+      hoverLine.style('display', 'none')
+      d3.select(tooltipRef.current).classed('visible', false)
+    })
 
   }, [entries])
 
@@ -669,9 +939,17 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
           <LegendColor $color="rgb(59, 130, 246)" />
           <span>Weekly average</span>
         </LegendItem>
-        <LegendItem>
-          <LegendColor $color="rgba(128, 128, 128, 0.2)" />
-          <span>95% CI</span>
+        <LegendItem style={{ opacity: 0.5 }}>
+          <LegendColor $color="rgba(168, 85, 247, 0.7)" />
+          <span>1 day ago</span>
+        </LegendItem>
+        <LegendItem style={{ opacity: 0.5 }}>
+          <LegendColor $color="rgba(236, 72, 153, 0.7)" />
+          <span>2 days ago</span>
+        </LegendItem>
+        <LegendItem style={{ opacity: 0.5 }}>
+          <LegendColor $color="rgba(251, 146, 60, 0.7)" />
+          <span>3 days ago</span>
         </LegendItem>
       </Legend>
       {stats && (
