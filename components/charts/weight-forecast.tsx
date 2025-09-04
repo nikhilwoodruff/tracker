@@ -10,9 +10,18 @@ const ChartCard = styled.div`
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  padding: 24px;
-  height: 450px;
+  padding: 16px;
+  height: 400px;
   position: relative;
+  
+  @media (min-width: 768px) {
+    padding: 24px;
+    height: 450px;
+  }
+  
+  @media (max-width: 480px) {
+    height: 350px;
+  }
 `
 
 const ChartHeader = styled.div`

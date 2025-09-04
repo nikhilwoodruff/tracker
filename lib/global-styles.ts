@@ -12,6 +12,9 @@ export const GlobalStyles = createGlobalStyle<{ theme: Theme }>`
 
   html {
     font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -23,6 +26,9 @@ export const GlobalStyles = createGlobalStyle<{ theme: Theme }>`
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   h1, h2, h3, h4, h5, h6 {

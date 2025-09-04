@@ -8,6 +8,13 @@ import { createClient } from '@/lib/supabase/client'
 
 const ChatForm = styled(Form)`
   width: 100%;
+  
+  @media (max-width: 480px) {
+    ${Button} {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 `
 
 const DateSelector = styled.div`

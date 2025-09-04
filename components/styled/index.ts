@@ -42,39 +42,62 @@ export const Header = styled.header`
 export const HeaderContent = styled.div`
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  
+  @media (min-width: 768px) {
+    padding: 0 24px;
+  }
 `
 
 export const Logo = styled.h1`
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   background: linear-gradient(135deg, ${({ theme }) => theme.primary}, ${({ theme }) => theme.secondary});
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  
+  @media (min-width: 768px) {
+    font-size: 24px;
+  }
 `
 
 export const UserSection = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
+  
+  @media (min-width: 768px) {
+    gap: 16px;
+  }
 `
 
 export const UserEmail = styled.span`
-  font-size: 13px;
+  font-size: 11px;
   color: ${({ theme }) => theme.mutedForeground};
   font-family: 'JetBrains Mono', monospace;
+  display: none;
+  
+  @media (min-width: 480px) {
+    display: inline;
+    font-size: 12px;
+  }
+  
+  @media (min-width: 768px) {
+    font-size: 13px;
+  }
 `
 
 export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'ghost' }>`
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid ${({ theme, variant = 'primary' }) => 
     variant === 'ghost' ? 'transparent' : theme.glassBorder};
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -117,17 +140,29 @@ export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'ghost
 export const Main = styled.main`
   max-width: 1280px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 16px;
+  
+  @media (min-width: 480px) {
+    padding: 24px 20px;
+  }
   
   @media (min-width: 768px) {
+    padding: 32px 24px;
+  }
+  
+  @media (min-width: 1024px) {
     padding: 48px 32px;
   }
 `
 
 export const Section = styled.div`
-  margin-bottom: 48px;
+  margin-bottom: 32px;
   animation: ${fadeIn} 0.8s ease-out;
   animation-fill-mode: both;
+  
+  @media (min-width: 768px) {
+    margin-bottom: 48px;
+  }
   
   &:nth-child(1) { animation-delay: 0.1s; }
   &:nth-child(2) { animation-delay: 0.2s; }
@@ -137,8 +172,13 @@ export const Section = styled.div`
 export const SectionHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 16px;
+  
+  @media (min-width: 768px) {
+    gap: 12px;
+    margin-bottom: 24px;
+  }
 `
 
 export const SectionTitle = styled.h2`
@@ -166,9 +206,13 @@ export const Card = styled.div`
   backdrop-filter: blur(10px);
   border: 1px solid ${({ theme }) => theme.glassBorder};
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   animation: ${scaleIn} 0.5s ease-out;
   transition: all 0.3s ease;
+  
+  @media (min-width: 768px) {
+    padding: 20px;
+  }
   
   &:hover {
     transform: translateY(-4px);
@@ -209,7 +253,7 @@ export const Input = styled.input`
 
 export const TextArea = styled.textarea`
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid ${({ theme }) => theme.glassBorder};
   border-radius: 8px;
   background: ${({ theme }) => theme.glass};
@@ -217,8 +261,8 @@ export const TextArea = styled.textarea`
   color: ${({ theme }) => theme.foreground};
   font-size: 14px;
   font-family: 'JetBrains Mono', monospace;
-  resize: none;
-  min-height: 120px;
+  resize: vertical;
+  min-height: 80px;
   transition: all 0.2s ease;
   
   &:focus {
@@ -241,16 +285,28 @@ export const TextArea = styled.textarea`
 
 export const Form = styled.form`
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
+  
+  @media (min-width: 480px) {
+    flex-direction: row;
+    gap: 12px;
+  }
 `
 
 export const Grid = styled.div<{ cols?: number }>`
   display: grid;
-  grid-template-columns: repeat(${({ cols = 1 }) => cols}, 1fr);
-  gap: 24px;
+  grid-template-columns: 1fr;
+  gap: 16px;
   
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(${({ cols = 1 }) => Math.min(2, cols)}, 1fr);
+    gap: 20px;
+  }
+  
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(${({ cols = 1 }) => cols}, 1fr);
+    gap: 24px;
   }
 `
 
