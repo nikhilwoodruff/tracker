@@ -441,6 +441,28 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
+    // Create continuous date range with gaps for missing data first
+    const firstDate = historicalData[0].date
+    const lastHistoricalDate = historicalData[historicalData.length - 1].date
+    const daysBetween = differenceInDays(lastHistoricalDate, firstDate)
+
+    const continuousData = []
+    for (let i = 0; i <= daysBetween; i++) {
+      const currentDate = addDays(firstDate, i)
+      const existingEntry = historicalData.find(d => {
+        const entryDate = new Date(d.date)
+        entryDate.setHours(0, 0, 0, 0)
+        const compareDate = new Date(currentDate)
+        compareDate.setHours(0, 0, 0, 0)
+        return entryDate.getTime() === compareDate.getTime()
+      })
+
+      continuousData.push({
+        date: currentDate,
+        weight: existingEntry ? existingEntry.weight : null
+      })
+    }
+
     // Create a content group that will be clipped
     const content = g.append('g')
       .attr('clip-path', 'url(#clip)')
@@ -448,8 +470,8 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     // Scales
     const xScale = d3.scaleTime()
       .domain([
-        d3.min(continuousData, d => d.date) as Date,
-        d3.max(todayForecast, d => d.date) as Date
+        continuousData[0].date,
+        todayForecast[todayForecast.length - 1].date
       ])
       .range([0, width])
 
@@ -511,28 +533,6 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .y(d => yScale(d.weight))
       .defined(d => d.weight !== null) // Only draw line where data exists
       .curve(d3.curveMonotoneX)
-
-    // Create continuous date range with gaps for missing data
-    const firstDate = historicalData[0].date
-    const lastHistoricalDate = historicalData[historicalData.length - 1].date
-    const daysBetween = differenceInDays(lastHistoricalDate, firstDate)
-
-    const continuousData = []
-    for (let i = 0; i <= daysBetween; i++) {
-      const currentDate = addDays(firstDate, i)
-      const existingEntry = historicalData.find(d => {
-        const entryDate = new Date(d.date)
-        entryDate.setHours(0, 0, 0, 0)
-        const compareDate = new Date(currentDate)
-        compareDate.setHours(0, 0, 0, 0)
-        return entryDate.getTime() === compareDate.getTime()
-      })
-
-      continuousData.push({
-        date: currentDate,
-        weight: existingEntry ? existingEntry.weight : null
-      })
-    }
 
     content.append('path')
       .datum(continuousData)
