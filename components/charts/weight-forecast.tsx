@@ -448,7 +448,7 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
     // Scales
     const xScale = d3.scaleTime()
       .domain([
-        d3.min(historicalData, d => d.date) as Date,
+        d3.min(continuousData, d => d.date) as Date,
         d3.max(todayForecast, d => d.date) as Date
       ])
       .range([0, width])
@@ -505,14 +505,37 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .style('font-family', 'JetBrains Mono, monospace')
       .style('font-size', '11px')
 
-    // Add historical line
+    // Add historical line with gap handling
     const historicalLine = d3.line<any>()
       .x(d => xScale(d.date))
       .y(d => yScale(d.weight))
+      .defined(d => d.weight !== null) // Only draw line where data exists
       .curve(d3.curveMonotoneX)
 
+    // Create continuous date range with gaps for missing data
+    const firstDate = historicalData[0].date
+    const lastHistoricalDate = historicalData[historicalData.length - 1].date
+    const daysBetween = differenceInDays(lastHistoricalDate, firstDate)
+
+    const continuousData = []
+    for (let i = 0; i <= daysBetween; i++) {
+      const currentDate = addDays(firstDate, i)
+      const existingEntry = historicalData.find(d => {
+        const entryDate = new Date(d.date)
+        entryDate.setHours(0, 0, 0, 0)
+        const compareDate = new Date(currentDate)
+        compareDate.setHours(0, 0, 0, 0)
+        return entryDate.getTime() === compareDate.getTime()
+      })
+
+      continuousData.push({
+        date: currentDate,
+        weight: existingEntry ? existingEntry.weight : null
+      })
+    }
+
     content.append('path')
-      .datum(historicalData)
+      .datum(continuousData)
       .attr('fill', 'none')
       .attr('stroke', 'rgb(16, 185, 129)')
       .attr('stroke-width', 2)
@@ -524,14 +547,15 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
       .y(d => yScale(d.weight))
       .curve(d3.curveMonotoneX)
 
-    // Connect historical to forecasts
+    // Connect historical to forecasts - use last actual data point
+    const lastActualData = historicalData[historicalData.length - 1]
     const todayConnectionData = [
-      historicalData[historicalData.length - 1],
+      lastActualData,
       { date: todayForecast[0].date, weight: todayForecast[0].weight }
     ]
-    
+
     const weekConnectionData = [
-      historicalData[historicalData.length - 1],
+      lastActualData,
       { date: weekForecast[0].date, weight: weekForecast[0].weight }
     ]
 
@@ -617,6 +641,19 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
         d3.select(this).attr('r', 4)
       })
 
+    // Add subtle markers for days with missing data
+    const missingDays = continuousData.filter(d => d.weight === null)
+    content.selectAll('.missing-day-marker')
+      .data(missingDays)
+      .enter().append('line')
+      .attr('class', 'missing-day-marker')
+      .attr('x1', d => xScale(d.date))
+      .attr('x2', d => xScale(d.date))
+      .attr('y1', height - 10)
+      .attr('y2', height)
+      .attr('stroke', 'rgba(255, 255, 255, 0.1)')
+      .attr('stroke-width', 1)
+
     // Remove the invisible hover dots since we now have a hover line for all data
 
     // Add backtesting dots if available
@@ -683,10 +720,15 @@ export default function WeightForecast({ entries }: WeightForecastProps) {
         content.selectAll('.historical-dot')
           .attr('cx', (d: any) => xScale(d.date))
           .attr('cy', (d: any) => yScale(d.weight))
-        
+
         content.selectAll('.backtest-dot')
           .attr('cx', (d: any) => xScale(d.date))
           .attr('cy', (d: any) => yScale(d.predicted))
+
+        // Update missing day markers
+        content.selectAll('.missing-day-marker')
+          .attr('x1', (d: any) => xScale(d.date))
+          .attr('x2', (d: any) => xScale(d.date))
         
         // Update vertical line
         content.select('line')
